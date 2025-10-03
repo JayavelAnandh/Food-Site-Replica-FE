@@ -20,11 +20,13 @@ import OptionPopup from "./OptionPopup";
 interface CustomizationModalProps {
   open: boolean;
   onClose: () => void;
+  product: any;
 }
 
 const CustomizationModal: React.FC<CustomizationModalProps> = ({
   open,
   onClose,
+  product
 }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [scrollPercent, setScrollPercent] = useState(0);
@@ -40,7 +42,7 @@ const CustomizationModal: React.FC<CustomizationModalProps> = ({
 
   const [quantity, setQuantity] = useState<number>(1);
 
-  const BASE_PRICE = 53.54;
+  const BASE_PRICE = product?.basePrice;
 
   useEffect(() => {
     const handleScroll = () => {
@@ -82,19 +84,6 @@ const CustomizationModal: React.FC<CustomizationModalProps> = ({
     return itemPrice * quantity;
   }, [BASE_PRICE, selectedFriesPrice, selectedPeriFriesPrice, quantity]);
 
-  // ---- quantity handlers ----
-  const handleQuantityChange = (val: string) => {
-    const num = parseInt(val, 10);
-    if (!isNaN(num) && num > 0) {
-      setQuantity(num);
-    } else if (val === "") {
-      setQuantity(0);
-    }
-  };
-
-  const increment = () => setQuantity((q) => q + 1);
-  const decrement = () => setQuantity((q) => (q > 1 ? q - 1 : 1));
-
   return (
     <Dialog
       open={open}
@@ -109,8 +98,8 @@ const CustomizationModal: React.FC<CustomizationModalProps> = ({
           transform: `translateY(${getTranslateY()})`,
           transition: "transform 0.4s ease",
           display: "flex",
-          flexDirection: { xs: "column", md: "row" }, // 👈 responsive direction
-          paddingRight: { xs: 0, md: 3 },             // remove padding on small
+          flexDirection: { xs: "column", md: "row" },
+          paddingRight: { xs: 0, md: 3 },
         },
       }}
     >
@@ -137,7 +126,7 @@ const CustomizationModal: React.FC<CustomizationModalProps> = ({
           style={{
             width: "100%",
             height: "100%",
-            objectFit: "cover",      // keep full area filled
+            objectFit: "cover",
             transition: "transform 0.4s ease",
           }}
           className="zoomable-img"
@@ -151,7 +140,6 @@ const CustomizationModal: React.FC<CustomizationModalProps> = ({
         </IconButton>
       </Box>
 
-
       {/* Content section */}
       <DialogContent
         ref={scrollRef}
@@ -164,16 +152,13 @@ const CustomizationModal: React.FC<CustomizationModalProps> = ({
       >
         {/* Title + Price + Calories */}
         <Typography variant="h5" fontWeight="bold">
-          PERi–Paradise Platter
+          {product?.name}
         </Typography>
         <Typography variant="body2" color="text.secondary" gutterBottom>
-          ${BASE_PRICE.toFixed(2)} • 2790 Cal
+          ${BASE_PRICE.toFixed(2)} •  {product?.calories}
         </Typography>
         <Typography paragraph>
-          PERi-Paradise basted whole chicken + Large PERi-Fries + Large Spiced
-          Rice + Garlic Bread (Feeds 3-4 people). Our PERi-Paradise baste is a
-          combination of citrus fruits blended with a PERi kick. On the milder
-          side.
+         {product?.description}
         </Typography>
 
         <Divider sx={{ my: 2 }} />
@@ -223,7 +208,6 @@ const CustomizationModal: React.FC<CustomizationModalProps> = ({
             Required
           </Typography>
 
-          {/* Large Fries option */}
           <Box
             display="flex"
             justifyContent="space-between"
@@ -244,7 +228,6 @@ const CustomizationModal: React.FC<CustomizationModalProps> = ({
 
           <Divider />
 
-          {/* Peri-Fries option */}
           <Box
             display="flex"
             justifyContent="space-between"
@@ -288,27 +271,7 @@ const CustomizationModal: React.FC<CustomizationModalProps> = ({
           </Typography>
         </Box>
 
-        {/* Quantity Selector - Dropdown */}
-        <Box
-          mt={3}
-          mb={1}
-          display="flex"
-          justifyContent="flex-start"
-        >
-          <Select
-            value={quantity}
-            onChange={(e) => setQuantity(Number(e.target.value))}
-            sx={{ minWidth: 80, borderRadius: 2 }}
-          >
-            {[...Array(10)].map((_, i) => (
-              <MenuItem key={i + 1} value={i + 1}>
-                {i + 1}
-              </MenuItem>
-            ))}
-          </Select>
-        </Box>
-
-        {/* Sticky Add to Order Button */}
+        {/* Sticky Footer with Qty + Button */}
         <Box
           sx={{
             position: "sticky",
@@ -317,6 +280,22 @@ const CustomizationModal: React.FC<CustomizationModalProps> = ({
             py: 2,
           }}
         >
+          {/* Qty dropdown at top-left */}
+          <Box display="flex" justifyContent="flex-start" mb={2}>
+            <Select
+              value={quantity}
+              onChange={(e) => setQuantity(Number(e.target.value))}
+              sx={{ minWidth: 80, borderRadius: 2 }}
+            >
+              {[...Array(10)].map((_, i) => (
+                <MenuItem key={i + 1} value={i + 1}>
+                  {i + 1}
+                </MenuItem>
+              ))}
+            </Select>
+          </Box>
+
+          {/* Add to Order button */}
           <Button
             fullWidth
             variant="contained"
@@ -326,7 +305,6 @@ const CustomizationModal: React.FC<CustomizationModalProps> = ({
             Add {quantity} to order • ${totalPrice.toFixed(2)}
           </Button>
         </Box>
-
 
         {/* Fries Popup */}
         <OptionPopup
@@ -358,7 +336,7 @@ const CustomizationModal: React.FC<CustomizationModalProps> = ({
           onSave={handleSavePeriFries}
         />
       </DialogContent>
-    </Dialog >
+    </Dialog>
   );
 };
 
