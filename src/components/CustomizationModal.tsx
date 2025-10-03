@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from "react";
+import React, { useRef, useState, useEffect, useMemo } from "react";
 import {
   Dialog,
   DialogContent,
@@ -10,8 +10,12 @@ import {
   RadioGroup,
   FormControlLabel,
   Divider,
+  Select,
+  MenuItem,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
+import { ArrowForwardIos } from "@mui/icons-material";
+import OptionPopup from "./OptionPopup";
 
 interface CustomizationModalProps {
   open: boolean;
@@ -24,6 +28,19 @@ const CustomizationModal: React.FC<CustomizationModalProps> = ({
 }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [scrollPercent, setScrollPercent] = useState(0);
+  const [friesPopup, setFriesPopup] = useState(false);
+  const [periFriesPopup, setPeriFriesPopup] = useState(false);
+
+  const [selectedFries, setSelectedFries] = useState<string>("");
+  const [selectedPeriFries, setSelectedPeriFries] = useState<string>("");
+
+  const [selectedFriesPrice, setSelectedFriesPrice] = useState<number>(0);
+  const [selectedPeriFriesPrice, setSelectedPeriFriesPrice] =
+    useState<number>(0);
+
+  const [quantity, setQuantity] = useState<number>(1);
+
+  const BASE_PRICE = 53.54;
 
   useEffect(() => {
     const handleScroll = () => {
@@ -44,6 +61,40 @@ const CustomizationModal: React.FC<CustomizationModalProps> = ({
     return "-5%";
   };
 
+  // ---- helper to enforce only one fries selection ----
+  const handleSaveFries = (val: string, price: number) => {
+    setSelectedFries(val);
+    setSelectedFriesPrice(price);
+    setSelectedPeriFries("");
+    setSelectedPeriFriesPrice(0);
+  };
+
+  const handleSavePeriFries = (val: string, price: number) => {
+    setSelectedPeriFries(val);
+    setSelectedPeriFriesPrice(price);
+    setSelectedFries("");
+    setSelectedFriesPrice(0);
+  };
+
+  // ---- compute total ----
+  const totalPrice = useMemo(() => {
+    const itemPrice = BASE_PRICE + selectedFriesPrice + selectedPeriFriesPrice;
+    return itemPrice * quantity;
+  }, [BASE_PRICE, selectedFriesPrice, selectedPeriFriesPrice, quantity]);
+
+  // ---- quantity handlers ----
+  const handleQuantityChange = (val: string) => {
+    const num = parseInt(val, 10);
+    if (!isNaN(num) && num > 0) {
+      setQuantity(num);
+    } else if (val === "") {
+      setQuantity(0);
+    }
+  };
+
+  const increment = () => setQuantity((q) => q + 1);
+  const decrement = () => setQuantity((q) => (q > 1 ? q - 1 : 1));
+
   return (
     <Dialog
       open={open}
@@ -58,22 +109,40 @@ const CustomizationModal: React.FC<CustomizationModalProps> = ({
           transform: `translateY(${getTranslateY()})`,
           transition: "transform 0.4s ease",
           display: "flex",
-          flexDirection: "row",
+          flexDirection: { xs: "column", md: "row" }, // 👈 responsive direction
+          paddingRight: { xs: 0, md: 3 },             // remove padding on small
         },
       }}
     >
-      {/* Left Fixed Image */}
+      {/* Image section */}
       <Box
         sx={{
           flex: 1,
+          minHeight: { xs: "40vh", md: "auto" },
           minWidth: { xs: "100%", md: "45%" },
-          backgroundImage:
-            "url('https://images.pexels.com/photos/70497/pexels-photo-70497.jpeg')",
-          backgroundSize: "cover",
-          backgroundPosition: "center",
           position: "relative",
+          overflow: "hidden",
+          "& .zoomable-img": {
+            transition: "transform 0.4s ease",
+          },
+          "& .zoomable-img:hover": {
+            transform: "scale(1.2)",
+            cursor: "zoom-in",
+          },
         }}
       >
+        <img
+          src="https://images.pexels.com/photos/70497/pexels-photo-70497.jpeg"
+          alt="Food"
+          style={{
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",      // keep full area filled
+            transition: "transform 0.4s ease",
+          }}
+          className="zoomable-img"
+        />
+
         <IconButton
           onClick={onClose}
           sx={{ position: "absolute", top: 12, left: 12, color: "white" }}
@@ -82,12 +151,13 @@ const CustomizationModal: React.FC<CustomizationModalProps> = ({
         </IconButton>
       </Box>
 
-      {/* Right Scrollable Content */}
+
+      {/* Content section */}
       <DialogContent
         ref={scrollRef}
         sx={{
           flex: 1,
-          minWidth: { xs: "100%", md: "55%" },
+          minWidth: { xs: "80%", md: "55%" },
           overflowY: "auto",
           p: 3,
         }}
@@ -97,7 +167,7 @@ const CustomizationModal: React.FC<CustomizationModalProps> = ({
           PERi–Paradise Platter
         </Typography>
         <Typography variant="body2" color="text.secondary" gutterBottom>
-          $53.54 • 2790 Cal
+          ${BASE_PRICE.toFixed(2)} • 2790 Cal
         </Typography>
         <Typography paragraph>
           PERi-Paradise basted whole chicken + Large PERi-Fries + Large Spiced
@@ -117,7 +187,11 @@ const CustomizationModal: React.FC<CustomizationModalProps> = ({
             Required
           </Typography>
           <RadioGroup defaultValue="whole">
-            <FormControlLabel value="whole" control={<Radio />} label="Whole Chicken" />
+            <FormControlLabel
+              value="whole"
+              control={<Radio />}
+              label="Whole Chicken"
+            />
           </RadioGroup>
         </Box>
 
@@ -148,10 +222,46 @@ const CustomizationModal: React.FC<CustomizationModalProps> = ({
           <Typography variant="caption" color="text.secondary">
             Required
           </Typography>
-          <RadioGroup defaultValue="periFries">
-            <FormControlLabel value="fries" control={<Radio />} label="Large Fries" />
-            <FormControlLabel value="periFries" control={<Radio />} label="Large PERi-PERi Fries" />
-          </RadioGroup>
+
+          {/* Large Fries option */}
+          <Box
+            display="flex"
+            justifyContent="space-between"
+            alignItems="center"
+            py={1.5}
+            onClick={() => setFriesPopup(true)}
+            sx={{ cursor: "pointer" }}
+          >
+            <Typography>Large Fries</Typography>
+            <ArrowForwardIos fontSize="small" />
+          </Box>
+
+          {selectedFries && (
+            <Typography variant="body2" color="success.main" ml={1}>
+              Selected: {selectedFries}
+            </Typography>
+          )}
+
+          <Divider />
+
+          {/* Peri-Fries option */}
+          <Box
+            display="flex"
+            justifyContent="space-between"
+            alignItems="center"
+            py={1.5}
+            onClick={() => setPeriFriesPopup(true)}
+            sx={{ cursor: "pointer" }}
+          >
+            <Typography>Large PERi-PERi Fries</Typography>
+            <ArrowForwardIos fontSize="small" />
+          </Box>
+
+          {selectedPeriFries && (
+            <Typography variant="body2" color="success.main" ml={1}>
+              Selected: {selectedPeriFries}
+            </Typography>
+          )}
         </Box>
 
         <Divider sx={{ my: 2 }} />
@@ -178,9 +288,28 @@ const CustomizationModal: React.FC<CustomizationModalProps> = ({
           </Typography>
         </Box>
 
+        {/* Quantity Selector - Dropdown */}
+        <Box
+          mt={3}
+          mb={1}
+          display="flex"
+          justifyContent="flex-start"
+        >
+          <Select
+            value={quantity}
+            onChange={(e) => setQuantity(Number(e.target.value))}
+            sx={{ minWidth: 80, borderRadius: 2 }}
+          >
+            {[...Array(10)].map((_, i) => (
+              <MenuItem key={i + 1} value={i + 1}>
+                {i + 1}
+              </MenuItem>
+            ))}
+          </Select>
+        </Box>
+
         {/* Sticky Add to Order Button */}
         <Box
-          mt={5}
           sx={{
             position: "sticky",
             bottom: 0,
@@ -194,11 +323,42 @@ const CustomizationModal: React.FC<CustomizationModalProps> = ({
             color="primary"
             sx={{ borderRadius: 2 }}
           >
-            Add 1 to order • $53.54
+            Add {quantity} to order • ${totalPrice.toFixed(2)}
           </Button>
         </Box>
+
+
+        {/* Fries Popup */}
+        <OptionPopup
+          open={friesPopup}
+          onClose={() => setFriesPopup(false)}
+          title="Large Fries"
+          description="Add Some Large Fries ?"
+          options={[
+            { label: "Salted", price: "$0.00" },
+            { label: "Mayo - naise", price: "$2.37" },
+            { label: "Mayo - ranch", price: "$3.37" },
+          ]}
+          selectedValue={selectedFries}
+          onSave={handleSaveFries}
+        />
+
+        {/* Peri-Fries Popup */}
+        <OptionPopup
+          open={periFriesPopup}
+          onClose={() => setPeriFriesPopup(false)}
+          title="Large Peri-Peri Fries"
+          description="Add Some Large Peri-Peri Fries ?"
+          options={[
+            { label: "Peri-Salted", price: "$0.00" },
+            { label: "Peri - naise", price: "$2.37" },
+            { label: "Peri - ranch", price: "$3.37" },
+          ]}
+          selectedValue={selectedPeriFries}
+          onSave={handleSavePeriFries}
+        />
       </DialogContent>
-    </Dialog>
+    </Dialog >
   );
 };
 
