@@ -1,7 +1,9 @@
 // src/data/menuData.ts
+
 export interface Option {
   label: string;
-  price: string;
+  price: string; 
+  children?: Option[]; 
 }
 
 export interface Section {
@@ -9,8 +11,8 @@ export interface Section {
   required?: boolean;
   included?: boolean;
   type: "radio" | "popup" | "info";
-  options?: Option[];
   description?: string;
+  options?: Option[];
 }
 
 export interface ProductData {
@@ -30,7 +32,7 @@ export const sampleProduct: ProductData = {
   calories: "2790 Cal",
   imageUrl: "https://images.pexels.com/photos/70497/pexels-photo-70497.jpeg",
   description:
-    "PERi-Paradise basted whole chicken + Large PERi-Fries + Large Spiced Rice + Garlic Bread (Feeds 3-4 people). Our PERi-Paradise baste is a combination of citrus fruits blended with a PERi kick. On the milder side.",
+    "PERi-Paradise basted whole chicken + Large PERi-Fries + Large Spiced Rice + Garlic Bread (Feeds 3–4 people). Our PERi-Paradise baste is a combination of citrus fruits blended with a PERi kick — on the milder side.",
   sections: [
     {
       title: "Whole Chicken",
@@ -38,6 +40,7 @@ export const sampleProduct: ProductData = {
       type: "radio",
       options: [{ label: "Whole Chicken", price: "$0.00" }],
     },
+
     {
       title: "The Cuts",
       required: true,
@@ -48,28 +51,34 @@ export const sampleProduct: ProductData = {
         { label: "Cut in 8", price: "$0.00" },
       ],
     },
+
     {
-      title: "Large Fries",
+      title: "Choose Large Fries",
       required: true,
       type: "popup",
-      description: "Add Some Large Fries ?",
+      description: "Pick your style of fries",
       options: [
-        { label: "Salted", price: "$0.00" },
-        { label: "Mayo - naise", price: "$2.37" },
-        { label: "Mayo - ranch", price: "$3.37" },
+        {
+          label: "Large Fries",
+          price: "$0.00",
+          children: [
+            { label: "Salted", price: "$0.00" },
+            { label: "Mayo - naise", price: "$2.37" },
+            { label: "Mayo - ranch", price: "$3.37" },
+          ],
+        },
+        {
+          label: "Large PERi-PERi Fries",
+          price: "$0.00",
+          children: [
+            { label: "Peri-Salted", price: "$0.00" },
+            { label: "Peri - naise", price: "$2.37" },
+            { label: "Peri - ranch", price: "$3.37" },
+          ],
+        },
       ],
     },
-    {
-      title: "Large PERi-PERi Fries",
-      required: true,
-      type: "popup",
-      description: "Add Some Large PERi-PERi Fries ?",
-      options: [
-        { label: "Peri-Salted", price: "$0.00" },
-        { label: "Peri - naise", price: "$2.37" },
-        { label: "Peri - ranch", price: "$3.37" },
-      ],
-    },
+
     {
       title: "Large Spiced Rice",
       included: true,

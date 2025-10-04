@@ -16,29 +16,34 @@ import {
 import CloseIcon from "@mui/icons-material/Close";
 import { ArrowForwardIos } from "@mui/icons-material";
 import OptionPopup from "./OptionPopup";
+import type { ProductData, Section } from "../helpers/menuData.ts";
 
 interface CustomizationModalProps {
   open: boolean;
   onClose: () => void;
-  product: any;
+  product: ProductData;
 }
 
 const CustomizationModal: React.FC<CustomizationModalProps> = ({
   open,
   onClose,
-  product
+  product,
 }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [scrollPercent, setScrollPercent] = useState(0);
-  const [friesPopup, setFriesPopup] = useState(false);
-  const [periFriesPopup, setPeriFriesPopup] = useState(false);
 
-  const [selectedFries, setSelectedFries] = useState<string>("");
-  const [selectedPeriFries, setSelectedPeriFries] = useState<string>("");
+  const [activePopup, setActivePopup] = useState<{
+    section: Section;
+    optionLabel: string;
+    children: { label: string; price: string }[];
+  } | null>(null);
 
-  const [selectedFriesPrice, setSelectedFriesPrice] = useState<number>(0);
-  const [selectedPeriFriesPrice, setSelectedPeriFriesPrice] =
-    useState<number>(0);
+  const [selectedOptions, setSelectedOptions] = useState<
+    Record<string, string>
+  >({});
+  const [selectedPrices, setSelectedPrices] = useState<Record<string, number>>(
+    {}
+  );
 
   const [quantity, setQuantity] = useState<number>(1);
 
@@ -63,26 +68,25 @@ const CustomizationModal: React.FC<CustomizationModalProps> = ({
     return "-5%";
   };
 
-  // ---- helper to enforce only one fries selection ----
-  const handleSaveFries = (val: string, price: number) => {
-    setSelectedFries(val);
-    setSelectedFriesPrice(price);
-    setSelectedPeriFries("");
-    setSelectedPeriFriesPrice(0);
+  const handleSaveOption = (
+    section: Section,
+    parentLabel: string,
+    childLabel: string,
+    priceStr: string
+  ) => {
+    const price = parseFloat(priceStr.replace("$", "")) || 0;
+    setSelectedOptions((prev) => ({
+      ...prev,
+      [section.title]: `${parentLabel} • ${childLabel}`,
+    }));
+    setSelectedPrices((prev) => ({ ...prev, [section.title]: price }));
+    setActivePopup(null);
   };
 
-  const handleSavePeriFries = (val: string, price: number) => {
-    setSelectedPeriFries(val);
-    setSelectedPeriFriesPrice(price);
-    setSelectedFries("");
-    setSelectedFriesPrice(0);
-  };
-
-  // ---- compute total ----
   const totalPrice = useMemo(() => {
-    const itemPrice = BASE_PRICE + selectedFriesPrice + selectedPeriFriesPrice;
-    return itemPrice * quantity;
-  }, [BASE_PRICE, selectedFriesPrice, selectedPeriFriesPrice, quantity]);
+    const extra = Object.values(selectedPrices).reduce((a, b) => a + b, 0);
+    return (BASE_PRICE + extra) * quantity;
+  }, [BASE_PRICE, selectedPrices, quantity]);
 
   return (
     <Dialog
@@ -103,7 +107,6 @@ const CustomizationModal: React.FC<CustomizationModalProps> = ({
         },
       }}
     >
-      {/* Image section */}
       <Box
         sx={{
           flex: 1,
@@ -121,17 +124,15 @@ const CustomizationModal: React.FC<CustomizationModalProps> = ({
         }}
       >
         <img
-          src="https://images.pexels.com/photos/70497/pexels-photo-70497.jpeg"
-          alt="Food"
+          src={product?.imageUrl}
+          alt={product?.name}
+          className="zoomable-img"
           style={{
             width: "100%",
             height: "100%",
             objectFit: "cover",
-            transition: "transform 0.4s ease",
           }}
-          className="zoomable-img"
         />
-
         <IconButton
           onClick={onClose}
           sx={{ position: "absolute", top: 12, left: 12, color: "white" }}
@@ -140,7 +141,6 @@ const CustomizationModal: React.FC<CustomizationModalProps> = ({
         </IconButton>
       </Box>
 
-      {/* Content section */}
       <DialogContent
         ref={scrollRef}
         sx={{
@@ -150,128 +150,97 @@ const CustomizationModal: React.FC<CustomizationModalProps> = ({
           p: 3,
         }}
       >
-        {/* Title + Price + Calories */}
         <Typography variant="h5" fontWeight="bold">
           {product?.name}
         </Typography>
         <Typography variant="body2" color="text.secondary" gutterBottom>
-          ${BASE_PRICE.toFixed(2)} •  {product?.calories}
+          ${BASE_PRICE.toFixed(2)} • {product?.calories}
         </Typography>
-        <Typography paragraph>
-         {product?.description}
-        </Typography>
+        <Typography paragraph>{product?.description}</Typography>
 
         <Divider sx={{ my: 2 }} />
 
-        {/* Whole Chicken */}
-        <Box mb={3}>
-          <Typography variant="subtitle1" fontWeight="bold">
-            Whole Chicken
-          </Typography>
-          <Typography variant="caption" color="text.secondary">
-            Required
-          </Typography>
-          <RadioGroup defaultValue="whole">
-            <FormControlLabel
-              value="whole"
-              control={<Radio />}
-              label="Whole Chicken"
-            />
-          </RadioGroup>
-        </Box>
-
-        <Divider sx={{ my: 2 }} />
-
-        {/* Cuts */}
-        <Box mb={3}>
-          <Typography variant="subtitle1" fontWeight="bold">
-            The Cuts
-          </Typography>
-          <Typography variant="caption" color="text.secondary">
-            Required
-          </Typography>
-          <RadioGroup defaultValue="cut2">
-            <FormControlLabel value="cut2" control={<Radio />} label="Cut in 2" />
-            <FormControlLabel value="cut4" control={<Radio />} label="Cut in 4" />
-            <FormControlLabel value="cut8" control={<Radio />} label="Cut in 8" />
-          </RadioGroup>
-        </Box>
-
-        <Divider sx={{ my: 2 }} />
-
-        {/* Fries */}
-        <Box mb={3}>
-          <Typography variant="subtitle1" fontWeight="bold">
-            Choose Large Fries
-          </Typography>
-          <Typography variant="caption" color="text.secondary">
-            Required
-          </Typography>
-
-          <Box
-            display="flex"
-            justifyContent="space-between"
-            alignItems="center"
-            py={1.5}
-            onClick={() => setFriesPopup(true)}
-            sx={{ cursor: "pointer" }}
-          >
-            <Typography>Large Fries</Typography>
-            <ArrowForwardIos fontSize="small" />
-          </Box>
-
-          {selectedFries && (
-            <Typography variant="body2" color="success.main" ml={1}>
-              Selected: {selectedFries}
+        {product.sections.map((section: Section, index: number) => (
+          <Box key={index} mb={3}>
+            <Typography variant="subtitle1" fontWeight="bold">
+              {section.title}
             </Typography>
-          )}
 
-          <Divider />
+            {section.required && (
+              <Typography variant="caption" color="text.secondary">
+                Required
+              </Typography>
+            )}
+            {section.included && (
+              <Typography variant="caption" color="success.main">
+              </Typography>
+            )}
 
-          <Box
-            display="flex"
-            justifyContent="space-between"
-            alignItems="center"
-            py={1.5}
-            onClick={() => setPeriFriesPopup(true)}
-            sx={{ cursor: "pointer" }}
-          >
-            <Typography>Large PERi-PERi Fries</Typography>
-            <ArrowForwardIos fontSize="small" />
+            {/* RADIO TYPE */}
+            {section.type === "radio" && section.options && (
+              <RadioGroup
+                defaultValue={section.options[0].label}
+                onChange={(e) => {
+                  const selected = section.options?.find(
+                    (opt: any) => opt.label === e.target.value
+                  );
+                  if (selected)
+                    handleSaveOption(section, section.title, selected.label, selected.price);
+                }}
+              >
+                {section.options.map((opt: any, i: number) => (
+                  <FormControlLabel
+                    key={i}
+                    value={opt.label}
+                    control={<Radio />}
+                    label={opt.label}
+                  />
+                ))}
+              </RadioGroup>
+            )}
+
+            {section.type === "popup" && section.options && (
+              <>
+                {section.options.map((opt: any, i: number) => (
+                  <Box key={i}>
+                    <Box
+                      display="flex"
+                      justifyContent="space-between"
+                      alignItems="center"
+                      py={1.5}
+                      onClick={() =>
+                        setActivePopup({
+                          section,
+                          optionLabel: opt.label,
+                          children: opt.children || [],
+                        })
+                      }
+                      sx={{ cursor: "pointer" }}
+                    >
+                      <Typography>{opt.label}</Typography>
+                      <ArrowForwardIos fontSize="small" />
+                    </Box>
+                  </Box>
+                ))}
+
+                {selectedOptions[section.title] && (
+                  <Typography variant="body2" color="success.main" ml={1}>
+                    Selected: {selectedOptions[section.title]}
+                  </Typography>
+                )}
+              </>
+            )}
+
+            {section.type === "info" && (
+              <Typography variant="caption" color="success.main">
+                Included
+              </Typography>
+            )}
+
+            <Divider sx={{ my: 2 }} />
           </Box>
+        ))}
 
-          {selectedPeriFries && (
-            <Typography variant="body2" color="success.main" ml={1}>
-              Selected: {selectedPeriFries}
-            </Typography>
-          )}
-        </Box>
-
-        <Divider sx={{ my: 2 }} />
-
-        {/* Rice */}
-        <Box mb={3}>
-          <Typography variant="subtitle1" fontWeight="bold">
-            Large Spiced Rice
-          </Typography>
-          <Typography variant="caption" color="success.main">
-            Included
-          </Typography>
-        </Box>
-
-        <Divider sx={{ my: 2 }} />
-
-        {/* Garlic Bread */}
-        <Box mb={3}>
-          <Typography variant="subtitle1" fontWeight="bold">
-            Large Garlic Bread
-          </Typography>
-          <Typography variant="caption" color="success.main">
-            Included
-          </Typography>
-        </Box>
-
-        {/* Sticky Footer with Qty + Button */}
         <Box
           sx={{
             position: "sticky",
@@ -280,7 +249,6 @@ const CustomizationModal: React.FC<CustomizationModalProps> = ({
             py: 2,
           }}
         >
-          {/* Qty dropdown at top-left */}
           <Box display="flex" justifyContent="flex-start" mb={2}>
             <Select
               value={quantity}
@@ -295,46 +263,29 @@ const CustomizationModal: React.FC<CustomizationModalProps> = ({
             </Select>
           </Box>
 
-          {/* Add to Order button */}
-          <Button
-            fullWidth
-            variant="contained"
-            color="primary"
-            sx={{ borderRadius: 2 }}
-          >
+          <Button fullWidth variant="contained" sx={{ borderRadius: 2 }}>
             Add {quantity} to order • ${totalPrice.toFixed(2)}
           </Button>
         </Box>
 
-        {/* Fries Popup */}
-        <OptionPopup
-          open={friesPopup}
-          onClose={() => setFriesPopup(false)}
-          title="Large Fries"
-          description="Add Some Large Fries ?"
-          options={[
-            { label: "Salted", price: "$0.00" },
-            { label: "Mayo - naise", price: "$2.37" },
-            { label: "Mayo - ranch", price: "$3.37" },
-          ]}
-          selectedValue={selectedFries}
-          onSave={handleSaveFries}
-        />
-
-        {/* Peri-Fries Popup */}
-        <OptionPopup
-          open={periFriesPopup}
-          onClose={() => setPeriFriesPopup(false)}
-          title="Large Peri-Peri Fries"
-          description="Add Some Large Peri-Peri Fries ?"
-          options={[
-            { label: "Peri-Salted", price: "$0.00" },
-            { label: "Peri - naise", price: "$2.37" },
-            { label: "Peri - ranch", price: "$3.37" },
-          ]}
-          selectedValue={selectedPeriFries}
-          onSave={handleSavePeriFries}
-        />
+        {activePopup && (
+          <OptionPopup
+            open={!!activePopup}
+            onClose={() => setActivePopup(null)}
+            title={activePopup.optionLabel}
+            description={activePopup.section.description || ""}
+            options={activePopup.children}
+            selectedValue={selectedOptions[activePopup.section.title] || ""}
+            onSave={(val, price) =>
+              handleSaveOption(
+                activePopup.section,
+                activePopup.optionLabel,
+                val,
+                price.toString()
+              )
+            }
+          />
+        )}
       </DialogContent>
     </Dialog>
   );
